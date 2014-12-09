@@ -1,35 +1,29 @@
 package com.holum.it.codes;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.PriorityQueue;
 
 /**
- * Implementation of the standard Huffman Coding algorithm.
+ * Implementation of the standard Huffman Coding algorithm. The plain and compressed texts
+ * are treated as an object, rather than a function - so as to be able to have each
+ * piece of the process available at once.
  * 
  * http://en.wikipedia.org/wiki/Huffman_coding
- * 
- * @author eho
  *
  */
-public class HuffmanCode {
+public class Huffman {
 
-    // Number of characters in our source alphabet (extended ascii)
-    private static final int ASCII_SIZE = 256;
-    
     // For encodings
     private static final char ZERO = '0';
     private static final char ONE = '1';
 
-    private String plaintext;
+    private String plaintext; // uncompressed text
+    private String compressedBinary; // compressed text in binary code alphabet
+    private Node root; // root of the Huffman tree
+    private int[] frequencies; // character frequencies table
+    private String[] charEncodings; // character encodings  
     
-    private String compressedBinary;
-    private String compressedText;
-    
-    private Node root;
-    
-    private int[] frequencies;
-    private String[] charEncodings;
+    // Number of characters in our source alphabet (extended ascii)
+    private static final int ASCII_SIZE = 256;
     
     public String getPlaintext() {
         return plaintext;
@@ -38,11 +32,7 @@ public class HuffmanCode {
     public String getCompressedBinary() {
         return compressedBinary;
     }
-
-    public String getCompressedText() {
-        return compressedText;
-    }
-
+    
     public int[] getFrequencies() {
         return frequencies;
     }
@@ -55,47 +45,26 @@ public class HuffmanCode {
         return charEncodings;
     }
     
-    public void printTree() {
-        
-    }
-    
-    public String decode(String codetext, int[] frequencies) {
-        Node root = buildTree(frequencies);
-        
-        Map<Character, String> codeFunction = new HashMap<>();
-        constructCodeMap(root, "");
-        
-        return null;
-    }
-    
-    public String encode(String plaintext) {
+    /**
+     * Create a Huffman object from a given plaintext.
+     */
+    public Huffman(String plaintext) {
         this.plaintext = plaintext;
+        this.compressedBinary = compress(plaintext);
+    }
+    
+    private String compress(String plaintext) {
         this.frequencies = computeFrequencies(plaintext);
         this.root = buildTree(frequencies);
         
         this.charEncodings = new String[ASCII_SIZE];
         constructCodeMap(root, "");
         
-        // Encodings
-        this.compressedBinary = encodeBinary(plaintext, charEncodings);
-        this.compressedText = encodeASCII(compressedBinary.toString());
-        
-        return compressedText;
+        return encodeBinary(plaintext, charEncodings);
     }
     
-    private String encodeASCII(String binaryString) {
-        StringBuffer newString = new StringBuffer();
-        for (int i=0; i<Math.ceil(binaryString.length()/8); i++) {
-            int start = i*8;
-            int chunkSize = Math.min(8, binaryString.length() - start);
-            String piece = binaryString.substring(start, start + chunkSize);
-            newString.append((char) Integer.parseInt(piece, 2));
-        }
-        return newString.toString();
-    }
-    
+    // Maps characters to their Huffman encodings using the computed mappings.
     private String encodeBinary(String plaintext, String[] charEncodings) {
-     // Encode string
         StringBuilder binaryString = new StringBuilder();
         for (int i=0; i<plaintext.length(); i++) {
             binaryString.append(charEncodings[plaintext.charAt(i)]);
@@ -103,6 +72,51 @@ public class HuffmanCode {
         return binaryString.toString();
     }
     
+    // Returns a count of character frequencies in the given text.
+    private int[] computeFrequencies(String plaintext) {
+        int[] freqs = new int[ASCII_SIZE];
+        
+        for (int i=0; i<plaintext.length(); i++) {
+            freqs[plaintext.charAt(i)]++;
+        }
+        
+        return freqs;
+    }
+    
+    /**
+     * Create a Huffman object from compressed text and frequency count.
+     */
+    public Huffman(String compressedBinary, int[] frequencies) {
+        this.compressedBinary = compressedBinary;
+        this.frequencies = frequencies;
+        this.plaintext = expand(compressedBinary, frequencies);
+    }
+    
+    private String expand(String compressedBinary, int[] frequencies) {
+        this.frequencies = frequencies;
+        this.root = buildTree(frequencies);
+        
+        this.charEncodings = new String[ASCII_SIZE];
+        constructCodeMap(root, "");
+        
+        return decodeBinary(compressedBinary);
+    }
+    
+    private String decodeBinary(String compressedBinary) {
+        StringBuffer plaintext = new StringBuffer();
+        Node it = root;
+        for (int i=0; i<compressedBinary.length(); i++) {
+            it = compressedBinary.charAt(i) == ZERO ? it.left : it.right;
+            if (it.isLeaf()) {
+                plaintext.append(it.sourceSymbol);
+                it = root;
+            }
+        }
+        
+        return plaintext.toString();
+    }
+    
+    // Recursively fills in char encodings
     private void constructCodeMap(Node n, String code) {
         n.encoding = code;
         
@@ -111,15 +125,12 @@ public class HuffmanCode {
             return;
         }
         
+        n.encoding = code;
         constructCodeMap(n.left, code + ZERO);
         constructCodeMap(n.right, code + ONE);
     }
     
-    /**
-     * Builds
-     * @param frequencies
-     * @return
-     */
+    // Constructs the Huffman tree using a priority queue.
     private Node buildTree(int[] frequencies) {
         // To sort by frequency as we compute nodes
         PriorityQueue<Node> nodes = new PriorityQueue<>();
@@ -131,38 +142,23 @@ public class HuffmanCode {
         }
         
         // Continuously remove, combine, and merge in the two smallest nodes, keeping them 
-        // in the Queue to maintain size order.
+        // in the queue to maintain size order.
         while (nodes.size() >= 2) {
             Node min_1 = nodes.poll();
             Node min_2 = nodes.poll();
             nodes.remove(min_2);
             
-            Node combo = new Node(min_1.weight + min_2.weight, (char) -1);
+            Node combo = new Node(min_1.weight + min_2.weight, (char) 78);
             combo.left = min_2;
             combo.right = min_1;
             
             nodes.add(combo);
         }
         
-        return nodes.poll(); // should have p ~= 1
+        return nodes.poll(); // return the root.
     }
     
-    /**
-     * Returns a count of character frequencies in the plaintext.
-     */
-    private int[] computeFrequencies(String plaintext) {
-        int[] freqs = new int[ASCII_SIZE];
-        
-        for (int i=0; i<plaintext.length(); i++) {
-            freqs[plaintext.charAt(i)]++;
-        }
-        
-        return freqs;
-    }
-    
-    /** 
-     * Node of the Huffman Tree.
-     */
+    // For building the Huffman tree.
     private static class Node implements Comparable<Node> {
         
         public final int weight; // probability of source symbol
@@ -183,12 +179,8 @@ public class HuffmanCode {
         }
         
         public boolean isLeaf() {
+            // Given the construction of the tree, we can omit individual checks.
             return (left == null) && (right == null);
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("Symbol=%s / Probability=%s / Encoding=%s", sourceSymbol, weight, encoding);
         }
     }
 }

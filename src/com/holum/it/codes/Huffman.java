@@ -119,13 +119,10 @@ public class Huffman {
     // Recursively fills in char encodings
     private void constructCodeMap(Node n, String code) {
         n.encoding = code;
-        
         if (n.isLeaf()) {
             charEncodings[n.sourceSymbol] = n.encoding;   
             return;
         }
-        
-        n.encoding = code;
         constructCodeMap(n.left, code + ZERO);
         constructCodeMap(n.right, code + ONE);
     }

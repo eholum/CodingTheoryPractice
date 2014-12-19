@@ -3,7 +3,7 @@ package com.holum.it.codes;
 public class HuffmanExample {
     
     public static void main(String[] args) {
-        String plaintext = "the quick brown fox jumped over the lazy dog!";
+        String plaintext = "the quick brown fox jumped over the lazy dog!\n";
         
         Huffman encoded = new Huffman(plaintext);
         System.out.println(encoded.getCompressedBinary());

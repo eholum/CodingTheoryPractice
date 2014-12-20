@@ -42,8 +42,8 @@ def walk_tree(node, dictionary, code=''):
         dictionary[node.char] = code
         node.code = code
         return
-    walk_tree(node.left, dictionary, code + '0')
-    walk_tree(node.right, dictionary, code + '1')
+    walk_tree(node.left, dictionary, code = code + '0')
+    walk_tree(node.right, dictionary, code = code + '1')
 
     
 def compute_frequencies(infile):
@@ -61,12 +61,9 @@ def write_compress(infile, outfile, dic, freqs):
     """
     Encodes source using the computed encodings.
     """
-    data = ''
     with open(infile, 'r') as fi:
-        for line in fi:
-            for c in line:
-                data += dic[c]
-                
+        data = ''.join([dic[c] for line in fi for c in line])
+    
     length, remainder = divmod(len(data), 8)
     bytes = [int(s,2) for s in [data[i << 3:(i + 1) << 3] for i in xrange(length)]]
     
@@ -116,13 +113,9 @@ def to_binary(raw_data):
     """
     Converts packed data to a long string in binary.
     """
-    bytes = ()
-    for rd in raw_data:
-        bytes += (unpack('%dB' % len(rd), ''.join(rd)))
-    
-    data = ''
-    for byte in bytes:
-        data += bin(int(byte))[2:].rjust(8, '0')
+    bytes = [unpack('%dB' % len(rd), rd)[0] for rd in raw_data]
+
+    data = ''.join([bin(int(byte))[2:].rjust(8, '0') for byte in bytes])
     
     # Remove last bit and trailing 0s.
     return data[:-8 -int(data[-8:], 2)]
@@ -171,5 +164,3 @@ if __name__ == "__main__":
     else:
         outfile = infile + '.huffman' if args.output == None else args.output
         compress(infile, outfile)
-        
-        

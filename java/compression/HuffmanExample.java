@@ -1,4 +1,4 @@
-package com.holum.it.codes;
+package compression;
 
 public class HuffmanExample {
     

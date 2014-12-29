@@ -7,12 +7,12 @@ python Huffman.py -h
 """
 from argparse import ArgumentParser
 from collections import defaultdict
+from CompressionTools import *
 from heapq import heapify, heappop, heappush
-from struct import pack, unpack
 
 class Node:
     """
-    A Node in a Huffman tree.
+    A node in a Huffman tree.
     """
     def __init__(self, char=None, left=None, right=None):
         self.char = char
@@ -42,43 +42,10 @@ def walk_tree(node, dictionary, code=''):
         dictionary[node.char] = code
         node.code = code
         return
-    walk_tree(node.left, dictionary, code = code + '0')
-    walk_tree(node.right, dictionary, code = code + '1')
-
+    walk_tree(node.left, dictionary, code + '0')
+    walk_tree(node.right, dictionary, code + '1')
     
-def compute_frequencies(infile):
-    """
-    Computes frequency count for input data.
-    """
-    freqs = defaultdict(int)
-    with open(infile, 'r') as fi:
-        for c in fi.read():
-            freqs[c] += 1
-    return freqs
-
-
-def write_compress(infile, outfile, dic, freqs):
-    """
-    Encodes source using the computed encodings.
-    """
-    with open(infile, 'r') as fi:
-        data = ''.join([dic[c] for line in fi for c in line])
     
-    length, remainder = divmod(len(data), 8)
-    bytes = [int(s,2) for s in [data[i << 3:(i + 1) << 3] for i in xrange(length)]]
-    
-    # If there are any bits leftover we fill in the last byte with 0s.
-    if remainder > 0:
-        extra = data[-remainder:].ljust(8, '0')
-        bytes.append(int(extra, 2))
-    bytes.append(8 - remainder) # Last byte records remainder.
-    
-    with open(outfile, 'wb') as out:
-        out.write(create_header(freqs))
-        out.write(pack('%dB' % len(bytes), *bytes))
-    return data
-
-
 def create_header(freqs):
     """
     Simple header recording character frequency counts. There's probably a more efficient
@@ -95,30 +62,19 @@ def compress(infile, outfile):
     root = build_tree(freqs)
     dictionary = {}
     walk_tree(root, dictionary)
-    data = write_compress(infile, outfile, dictionary, freqs)
+    header = create_header(freqs)
+    data = write_compress(infile, outfile, dictionary, header)
 
 
 def parse_header(header):
     """
     Returns a default dict populated with the header values in the huffman file.
     """
-    freqs = defaultdict(int)
+    frequencies = defaultdict(int)
     values = header.split('/')
     for i in xrange(0, len(values), 2):
-        freqs[chr(int(values[i]))] = int(values[i+1])
-    return freqs
-
-
-def to_binary(raw_data):
-    """
-    Converts packed data to a long string in binary.
-    """
-    bytes = [unpack('%dB' % len(rd), rd)[0] for rd in raw_data]
-
-    data = ''.join([bin(int(byte))[2:].rjust(8, '0') for byte in bytes])
-    
-    # Remove last bit and trailing 0s.
-    return data[:-8 -int(data[-8:], 2)]
+        frequencies[chr(int(values[i]))] = float(values[i+1])
+    return frequencies
 
 
 def write_expand(data, fi, root):

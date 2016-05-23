@@ -7,7 +7,6 @@ python Huffman.py -h
 """
 from argparse import ArgumentParser
 from collections import defaultdict
-from CompressionTools import *
 from heapq import heapify, heappop, heappush
 
 class Node:
@@ -19,6 +18,16 @@ class Node:
         self.left = left
         self.right = right
 
+def compute_frequencies(infile):
+    """
+    Computes character frequency count in a file, returns 
+    (total file length, default dictionary for character count)
+    """
+    frequencies = defaultdict(int)
+    with open(infile, 'r') as fi:
+        for c in fi.read():
+            frequencies[c] += 1
+    return frequencies    
 
 def build_tree(freqs):
     """
@@ -54,6 +63,29 @@ def create_header(freqs):
     return '/'.join(['{0}/{1}'.format(ord(ch), freqs[ch]) for ch in freqs]) + '\n'
 
 
+def write_compress(infile, outfile, dic, header):
+    """
+    Writes encoded data to specified outfile, adds frequency count as header.
+    """
+    # TODO: This is horribly inefficient
+    with open(infile, 'r') as fi:
+        data = ''.join([dic[c] for line in fi for c in line])
+    
+    length, remainder = divmod(len(data), 8)
+    bytes = [int(s,2) for s in [data[i << 3:(i + 1) << 3] for i in xrange(length)]]
+    
+    # If there are any bits leftover we fill in the last byte with 0s.
+    if remainder > 0:
+        extra = data[-remainder:].ljust(8, '0')
+        bytes.append(int(extra, 2))
+    bytes.append(8 - remainder) # Last byte records remainder.
+
+    with open(outfile, 'wb') as out:
+        out.write(header)
+        out.write(pack('%dB' % len(bytes), *bytes))
+    return data
+    
+    
 def compress(infile, outfile):
     """
     Compresses inputted text according to Huffman's algorithm.
